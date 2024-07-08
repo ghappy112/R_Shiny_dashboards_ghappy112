@@ -12,7 +12,7 @@ ui <- page_sidebar(
       width = 100
     )),
   # App title
-  title = "Coding Languages Proficiencies",
+  title = "Coding Languages & Technical Tools Proficiencies",
   # Output: Bar Chart
   plotOutput(outputId = "barPlot")
 )
@@ -37,10 +37,38 @@ server <- function(input, output) {
     # Filter dataframe based on selected filters
     filtered_df <- df[df$filter %in% input$filter, ]
     
+    # get list of selected tool categories
+    inputs <- c(input$filter)
+    
+    # set title based on user inputs
+    if (length(inputs) == 1) {
+      my_title <- inputs[1]
+    } else if (length(inputs) == 0) {
+      my_title <- ""
+    } else if (length(inputs) == 2) {
+      my_title <- paste(inputs[1], inputs[2], sep = " & ")
+      if (my_title == "Python Packages & R Packages") {
+        my_title <- "Python & R Packages"
+      }
+    } else if (length(inputs) > 2) {
+      
+      coding_languages <- "Coding Languages" %in% inputs
+      coding_packages <- "Python Packages" %in% inputs | "R Packages" %in% inputs
+      tools <- "Cloud" %in% inputs | "Software" %in% inputs
+      
+      if (coding_languages & tools & !coding_packages) {
+        my_title <- "Coding Languages & Technical Tools"
+      } else if ((coding_languages | coding_packages) & tools) {
+        my_title <- "Coding & Technical Tools"
+      } else {
+        my_title <- "Coding Languages and Packages"
+      }
+    }
+    
     # Create bar chart using ggplot
     ggplot(filtered_df, aes(x = Skill, y = reorder(Language, -Order))) +
       geom_bar(stat = "identity", fill = "#00AFBB", color = "white") +
-      labs(title = "Coding Languages Proficiencies",
+      labs(title = my_title,
            x = "Proficiency",
            y = "") +
       theme_minimal() + theme(plot.background = element_blank(),
