@@ -6,9 +6,15 @@ library(ggplot2)
 ui <- page_sidebar(
   sidebar = sidebar(
     sidebarPanel(
-      checkboxGroupInput("filter", "Filter:",
+      checkboxGroupInput("filter", "Technology Filter",
                          choices = c("Cloud", "Coding Languages", "Python Packages", "R Packages", "Software"),
                          selected = c("Coding Languages")),
+      width = 100
+    ),
+    sidebarPanel(
+      checkboxGroupInput("skill_filter", "Proficiency Filter",
+                         choices = c("Novice", "Basic", "Intermediate", "Advanced"),
+                         selected = c("Novice", "Basic", "Intermediate", "Advanced")),
       width = 100
     )),
   # App title
@@ -26,16 +32,33 @@ server <- function(input, output) {
     Skill = c(2.5, 2, 1.5, 3, 1, 0.5, 1, 2, 3, 2, 1.5, 3, 2, 2, 2, 2, 3, 2, 2.5, 1, 1.5, 2, 2, 1, 1, 1, 2, 1, 2, 2, 2, 1, 1, 1, 1, 1.5, 2, 1, 2, 1, 1, 2, 0.5),
     filter = c("Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "R Packages", "R Packages", "R Packages", "R Packages", "R Packages", "R Packages", "Python Packages", "Python Packages", "Software", "Software", "Software", "Software", "Software", "Cloud", "Cloud")
   )
+  
   # engineer sorting order feature for dataframe for sorting bar chart
   df = df[order(df$Language), ]
   df = df[order(df$Skill, decreasing=TRUE), ]
   df$Order = seq(1, nrow(df))
+  
+  # engineer labeled skill levels for filtering by skill level
+  skill_labels = c()
+  for (x in df$Skill) {
+    if (x < 1) {
+      skill_labels = append(skill_labels, "Novice")
+    } else if (x < 2) {
+      skill_labels = append(skill_labels, "Basic")
+    } else if (x < 3) {
+      skill_labels = append(skill_labels, "Intermediate")
+    } else {
+      skill_labels = append(skill_labels, "Advanced")
+    }
+  }
+  df$skill_filter = skill_labels
   
   # Render a bar chart based on dataframe
   output$barPlot <- renderPlot({
     
     # Filter dataframe based on selected filters
     filtered_df <- df[df$filter %in% input$filter, ]
+    filtered_df <- filtered_df[filtered_df$skill_filter %in% input$skill_filter, ]
     
     # get list of selected tool categories
     inputs <- c(input$filter)
