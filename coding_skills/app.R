@@ -21,9 +21,7 @@ server <- function(input, output) {
   # engineer features for dataframe for bar chart
   df = df[order(df$Language, decreasing=FALSE), ]
   df = df[order(df$Skill, decreasing=TRUE), ]
-  row.names(df) <- NULL
   df$Order = seq(1, nrow(df))
-  df$Skill = df$Skill * 2
   
   # Render a bar chart based on dataframe
   output$barPlot <- renderPlot({
@@ -44,11 +42,11 @@ server <- function(input, output) {
                               ) +
       scale_x_continuous(labels = function(x) {
         ifelse(x == 0, "Novice",
-               ifelse(x == 1, "",
-                      ifelse(x == 2, "Basic",
-                             ifelse(x == 3, "",
-                                    ifelse(x == 4, "Intermediate",
-                                           ifelse(x == 5, "", "Advanced"))))))
+               ifelse(x == 0.5, "",
+                      ifelse(x == 1, "Basic",
+                             ifelse(x == 1.5, "",
+                                    ifelse(x == 2, "Intermediate",
+                                           ifelse(x == 2.5, "", "Advanced"))))))
         })
   })
 }
