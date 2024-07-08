@@ -1,23 +1,20 @@
 library(shiny)
-library(shinydashboard)
+library(bslib)
 library(ggplot2)
 
 # Define UI for app
-ui <- dashboardPage(
-  dashboardHeader(title = "Coding Languages Proficiencies"),
-  dashboardSidebar(
-    sidebarMenu(
-      menuItem("Filter", tabName = "filter", selected = TRUE,
-               checkboxGroupInput("filter", "Filter:",
-                                  choices = c("Coding Languages", "Python Packages", "R Packages"),
-                                  selected = "Coding Languages")
-      )
-    )
-  ),
-  dashboardBody(
-    # Output: Bar Chart
-    plotOutput(outputId = "barPlot")
-  )
+ui <- page_sidebar(
+  sidebar = sidebar(
+    sidebarPanel(
+      checkboxGroupInput("filter", "Filter:",
+                         choices = c("Coding Languages", "Python Packages", "R Packages"),
+                         selected = c("Coding Languages")),
+      width = 100
+    )),
+  # App title
+  title = "Coding Languages Proficiencies",
+  # Output: Bar Chart
+  plotOutput(outputId = "barPlot")
 )
 
 # Define server logic
@@ -29,14 +26,14 @@ server <- function(input, output) {
     Skill = c(2.5, 2, 1.5, 3, 1, 0.5, 1, 2, 3, 2, 1.5, 3, 2, 2, 2, 2, 3, 2, 2.5, 1, 1.5, 2, 2, 1, 1, 1, 2, 1, 2, 2, 2, 1, 1, 1, 1, 1.5),
     filter = c("Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "R Packages", "R Packages", "R Packages", "R Packages", "R Packages", "R Packages", "Python Packages", "Python Packages")
   )
-  
-  # Add sorting order for dataframe for sorting bar chart
+  # engineer sorting order feature for dataframe for sorting bar chart
   df = df[order(df$Language), ]
   df = df[order(df$Skill, decreasing=TRUE), ]
   df$Order = seq(1, nrow(df))
   
   # Render a bar chart based on dataframe
   output$barPlot <- renderPlot({
+    
     # Filter dataframe based on selected filters
     filtered_df <- df[df$filter %in% input$filter, ]
     
@@ -65,5 +62,5 @@ server <- function(input, output) {
   })
 }
 
-# Run the application 
+# run shiny app
 shinyApp(ui = ui, server = server)
