@@ -7,7 +7,7 @@ ui <- page_sidebar(
   sidebar = sidebar(
   sidebarPanel(
     checkboxGroupInput("filter", "Filter:",
-                       choices = c("Coding Languages", "Python Packages"),
+                       choices = c("Coding Languages", "Python Packages", "R Packages"),
                        selected = c("Coding Languages")),
     width = 100
   )),
@@ -22,9 +22,9 @@ server <- function(input, output) {
   
   # Define dataframe with categories and frequencies
   df = data.frame(
-    Language = c("Python", "R", "Stata", "SQL", "HTML", "CSS", "JavaScript", "DAX", "Pandas", "NumPy", "SciPy", "scikit-learn", "Keras", "TensorFlow", "Matplotlib", "Seaborn", "Regex", "requests", "Beautiful Soup", "Selenium", "json", "XGBoost", "CATBoost", "pickle", "joblib", "statsmodels", "NLTK", "Flask"),
-    Skill = c(2.5, 2, 1.5, 3, 1, 0.5, 1, 2, 3, 2, 1.5, 3, 2, 2, 2, 2, 3, 2, 2.5, 1, 1.5, 2, 2, 1, 1, 1, 2, 1),
-    filter = c("Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages")
+    Language = c("Python", "R", "Stata", "SQL", "HTML", "CSS", "JavaScript", "DAX", "Pandas", "NumPy", "SciPy", "scikit-learn", "Keras", "TensorFlow", "Matplotlib", "Seaborn", "Regex", "requests", "Beautiful Soup", "Selenium", "json", "XGBoost", "CATBoost", "pickle", "joblib", "statsmodels", "NLTK", "Flask", "Shiny", "Stargazer", "ggplot2", "plotly", "tidy2", "dplyr"),
+    Skill = c(2.5, 2, 1.5, 3, 1, 0.5, 1, 2, 3, 2, 1.5, 3, 2, 2, 2, 2, 3, 2, 2.5, 1, 1.5, 2, 2, 1, 1, 1, 2, 1, 2, 2, 2, 1, 1, 1),
+    filter = c("Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "R Packages", "R Packages", "R Packages", "R Packages", "R Packages", "R Packages")
   )
   # engineer sorting order feature for dataframe for sorting bar chart
   df = df[order(df$Language), ]
