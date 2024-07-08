@@ -45,10 +45,10 @@ server <- function(input, output) {
       scale_x_continuous(labels = function(x) {
         ifelse(x == 0, "Novice",
                ifelse(x == 1, "",
-                 ifelse(x == 2, "Basic",
-                        ifelse(x == 3, "",
-                               ifelse(x == 4, "Intermediate",
-                                      ifelse(x == 5, "", "Advanced"))))))
+                      ifelse(x == 2, "Basic",
+                             ifelse(x == 3, "",
+                                    ifelse(x == 4, "Intermediate",
+                                           ifelse(x == 5, "", "Advanced"))))))
         })
   })
 }
