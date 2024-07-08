@@ -4,8 +4,15 @@ library(ggplot2)
 
 # Define UI for app
 ui <- page_sidebar(
+  sidebar = sidebar(
+  sidebarPanel(
+    checkboxGroupInput("filter", "Filter:",
+                       choices = c("Coding Languages", "Python Packages"),
+                       selected = c("Coding Languages")),
+    width = 100
+  )),
   # App title
-  title = "Coding Languages Skill Levels",
+  title = "Coding Languages Proficiencies",
   # Output: Bar Chart
   plotOutput(outputId = "barPlot")
 )
@@ -15,22 +22,26 @@ server <- function(input, output) {
   
   # Define dataframe with categories and frequencies
   df = data.frame(
-    Language = c("Python", "R", "Stata", "SQL", "HTML", "CSS", "JavaScript", "DAX"),
-    Skill = c(2.5, 2, 1.5, 3, 1, 0.5, 1, 2)
+    Language = c("Python", "R", "Stata", "SQL", "HTML", "CSS", "JavaScript", "DAX", "Pandas", "NumPy", "SciPy", "scikit-learn", "Keras", "TensorFlow", "Matplotlib", "Seaborn", "Regex", "requests", "Beautiful Soup", "Selenium", "json", "XGBoost", "CATBoost", "pickle", "joblib", "statsmodels", "NLTK", "Flask"),
+    Skill = c(2.5, 2, 1.5, 3, 1, 0.5, 1, 2, 3, 2, 1.5, 3, 2, 2, 2, 2, 3, 2, 2.5, 1, 1.5, 2, 2, 1, 1, 1, 2, 1),
+    filter = c("Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Coding Languages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages", "Python Packages")
   )
-  # engineer features for dataframe for bar chart
-  df = df[order(df$Language, decreasing=FALSE), ]
+  # engineer sorting order feature for dataframe for sorting bar chart
+  df = df[order(df$Language), ]
   df = df[order(df$Skill, decreasing=TRUE), ]
   df$Order = seq(1, nrow(df))
   
   # Render a bar chart based on dataframe
   output$barPlot <- renderPlot({
     
+    # Filter dataframe based on selected filters
+    filtered_df <- df[df$filter %in% input$filter, ]
+    
     # Create bar chart using ggplot
-    ggplot(df, aes(x = Skill, y = reorder(Language, -Order))) +
+    ggplot(filtered_df, aes(x = Skill, y = reorder(Language, -Order))) +
       geom_bar(stat = "identity", fill = "#00AFBB", color = "white") +
-      labs(title = "Coding Languages Skill Levels",
-           x = "Skill Level",
+      labs(title = "Coding Languages Proficiencies",
+           x = "Proficiency",
            y = "") +
       theme_minimal() + theme(plot.background = element_blank(),
                               panel.grid.major = element_blank(),
