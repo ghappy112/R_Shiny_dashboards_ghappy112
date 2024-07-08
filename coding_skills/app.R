@@ -81,11 +81,9 @@ server <- function(input, output) {
       ) +
       scale_x_continuous(labels = function(x) {
         ifelse(x == 0, "Novice",
-               ifelse(x == 0.5, "",
-                      ifelse(x == 1, "Basic",
-                             ifelse(x == 1.5, "",
-                                    ifelse(x == 2, "Intermediate",
-                                           ifelse(x == 2.5, "", "Advanced"))))))
+               ifelse(x == 1, "Basic",
+                      ifelse(x == 2, "Intermediate",
+                             ifelse(x == 3, "Advanced", ""))))
       })
   })
 }
