@@ -225,7 +225,7 @@ server <- function(input, output) {
     
     # sales by product category and salesperson bar chart
     ggplot(df_grp_cat_person, aes(fill = reorder(Person, total_sales), y = reorder(Category, total_sales), x=total_sales)) + 
-      geom_bar(position="stack", stat="identity", color = "white") +
+      geom_bar(position="stack", stat="identity", color = NA) +
       labs(title = "Sales by Product Category",
            x = "Sales",
            y = "Product Category",
