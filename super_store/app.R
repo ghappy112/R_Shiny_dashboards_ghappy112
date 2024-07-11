@@ -72,7 +72,8 @@ rm(date, dates, month, year, quarter, x)
 # custom theme
 mytheme = create_theme(
   adminlte_color(
-    green = "#009E73"
+    green = "#009E73",
+    red = "#b20019"
   )
 )
 
@@ -83,7 +84,20 @@ ui <- dashboardPage(
   dashboardSidebar(
     sidebarMenu(
       menuItem("Sales Dashboard", tabName = "sales_dashboard", icon = icon("dashboard"))
-    )
+    ),
+    sidebarPanel(
+      style = "background-color: transparent;",  # Make the sidebar transparent
+      checkboxGroupInput("filter1",
+                         "Salesperson Filter",
+                         choices = sort(unique(df$Person)),
+                         selected = unique(df$Person),
+                         #inline = FALSE,
+                         #width = 0,
+                         #choiceNames = NULL,
+                         #choiceValues = NULL
+                         ),
+      width=0
+  )
   ),
   dashboardBody(
     use_theme(mytheme),
@@ -106,55 +120,120 @@ ui <- dashboardPage(
 # Server
 server <- function(input, output) {
   
-  # engineer sales by salesperson
-  df_grp_person = df %>% group_by(Person)  %>%
-    summarise(total_sales = sum(Sales), 
-              .groups = 'drop')
-  df_grp_person = data.frame(df_grp_person)
-  #df_grp_person
   
-  # engineer sales by year and quarter
-  df_grp_time = df %>% group_by(Year_Quarter)  %>%
-    summarise(total_sales = sum(Sales), 
-              .groups = 'drop')
-  df_grp_time = data.frame(df_grp_time)
-  #df_grp_time
+  # Create a reactive value to store the filtered dataframe
+  filtered_df <- reactiveVal(df)
   
-  # engineer sales by product category and salesperson
-  df_grp_cat_person = df %>% group_by(Category, Person)  %>%
-    summarise(total_sales = sum(Sales), 
-              .groups = 'drop')
-  df_grp_cat_person = data.frame(df_grp_cat_person)
-  #df_grp_cat_person
+  # Observe changes in user input (e.g., checkboxGroupInput)
+  observe({
+    filtered_df(df[df$Person %in% input$filter1, ])
+  })
   
-  # engineer average quarterly growth metric
-  df_grp_time2 = df_grp_time %>% mutate(total_sales_lag = lag(total_sales))
-  df_grp_time2$Growth = (df_grp_time2$total_sales - df_grp_time2$total_sales_lag) / df_grp_time2$total_sales_lag
-  df_grp_time2 = df_grp_time2 %>% drop_na()
-  #df_grp_time
-  avg_growth = paste(round(mean(df_grp_time2$Growth) * 100, 2), "%", sep = "")
-  #avg_growth
+  # Render the summary of the filtered dataframe
+  output$filtered_summary <- renderPrint({
+    summary(filtered_df())
+  })
   
-  # engineer total sales
-  total_sales = round(sum(df$Sales), 0)
-  nchars = nchar(as.character(total_sales))
-  if (nchars > 6) {
-    total_sales = paste("$", round(total_sales / 1000000, 1), "M", sep = "")
-  } else if (nchars > 3) {
-    total_sales = paste("$", round(total_sales / 1000, 1), "K", sep = "")
-  } else {
-    total_sales = paste("$", round(total_sales, 1), sep = "")
-  }
-  total_sales
   
-  # remove nchars
-  rm(nchars)
+  # reactive feature engineering
   
+  # Engineer sales by salesperson
+  df_grp_person <- reactive({
+    df %>%
+      filter(Person %in% input$filter1) %>%
+      group_by(Person) %>%
+      summarise(total_sales = sum(Sales), .groups = 'drop')
+  })
+  
+  # Engineer sales by year and quarter
+  df_grp_time <- reactive({
+    df %>%
+      filter(Person %in% input$filter1) %>%
+      group_by(Year_Quarter) %>%
+      summarise(total_sales = sum(Sales), .groups = 'drop')
+  })
+  
+  # Engineer sales by product category and salesperson
+  df_grp_cat_person <- reactive({
+    df %>%
+      filter(Person %in% input$filter1) %>%
+      group_by(Category, Person) %>%
+      summarise(total_sales = sum(Sales), .groups = 'drop')
+  })
+  
+  # Engineer average quarterly growth metric
+  df_grp_time2 <- reactive({
+    df_grp_time() %>%
+      mutate(total_sales_lag = lag(total_sales)) %>%
+      drop_na() %>%
+      mutate(Growth = (total_sales - total_sales_lag) / total_sales_lag)
+  })
+  
+  # Calculate average growth
+  avg_growth <- reactive({
+    avg <- mean(df_grp_time2()$Growth) * 100
+    if (as.character(avg) == "NaN") {
+      ""
+    } else {
+      paste0(round(avg, 2), "%")
+    }
+  })
+  
+  # Calculate total sales
+  total_sales <- reactive({
+    total <- sum(filtered_df()$Sales)
+    if (total >= 1000000) {
+      paste("$", round(total / 1000000, 1), "M", sep = "")
+    } else if (total >= 1000) {
+      paste("$", round(total / 1000, 1), "K", sep = "")
+    } else {
+      paste("$", round(total, 1), sep = "")
+    }
+  })
+  
+  # set color for average growth
+  value1_color <- reactive({
+    if(avg_growth() == "") {
+      "red"
+    } else {
+      "green"
+    }
+  })
+  
+  # set icon for average growth
+  value1_icon <- reactive({
+    if(value1_color() == "red") {
+      "arrow-down"
+    } else {
+      "arrow-up"
+    }
+  })
+  
+  # set color for total sales
+  value2_color <- reactive({
+    if(total_sales() == "$0") {
+      "red"
+    } else {
+      "green"
+    }
+  })
+  
+  # set icon for average growth
+  value2_icon <- reactive({
+    if(value2_color() == "red") {
+      ""
+    } else {
+      "check"
+    }
+  })
+  
+  
+  # render plots
   
   # render time series chart
   output$time_series_plot <- renderPlot({
     
-    ggplot(data = df_grp_time, aes(x = Year_Quarter, y = total_sales, group = 1)) +
+    ggplot(data = df_grp_time(), aes(x = Year_Quarter, y = total_sales, group = 1)) +
       
       # Line and point aesthetics
       geom_line(color = custom_palette[1], size = 1.2) +
@@ -202,7 +281,7 @@ server <- function(input, output) {
   output$bar_plot <- renderPlot({
     
     # sales by salesperson bar chart
-    ggplot(df_grp_person, aes(x = total_sales, y = reorder(Person, total_sales))) +
+    ggplot(df_grp_person(), aes(x = total_sales, y = reorder(Person, total_sales))) +
       geom_bar(stat = "identity", fill = "#0072B2", color = "white") +
       labs(title = "Sales by Salesperson",
            x = "Sales",
@@ -224,7 +303,7 @@ server <- function(input, output) {
   output$stacked_bar_plot <- renderPlot({
     
     # sales by product category and salesperson bar chart
-    ggplot(df_grp_cat_person, aes(fill = reorder(Person, total_sales), y = reorder(Category, total_sales), x=total_sales)) + 
+    ggplot(df_grp_cat_person(), aes(fill = reorder(Person, total_sales), y = reorder(Category, total_sales), x=total_sales)) + 
       geom_bar(position="stack", stat="identity", color = NA) +
       labs(title = "Sales by Product Category",
            x = "Sales",
@@ -247,20 +326,20 @@ server <- function(input, output) {
   # info box 1
   output$value1 <- renderInfoBox({
     infoBox(
-      "Average Quarterly Growth",
-      avg_growth,
-      icon = icon("arrow-up"),
-      color = "green"
+      "Quarterly Growth (Avg.)",
+      avg_growth(),
+      icon = icon(value1_icon()),
+      color = value1_color()
     )
   })
   
-  # value box 2
-  output$value2 <- renderValueBox({
+  # info box 2
+  output$value2 <- renderInfoBox({
     infoBox(
       "Total Sales",
-      total_sales,
-      icon = icon("check"),
-      color = "green"
+      total_sales(),
+      icon = icon(value2_icon()),
+      color = value2_color()
     )
   })
 }
