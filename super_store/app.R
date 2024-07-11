@@ -202,7 +202,9 @@ server <- function(input, output) {
   
   # set icon for average growth
   value1_icon <- reactive({
-    if(value1_color() == "red") {
+    if (avg_growth() == ""){
+      ""
+    } else if(value1_color() == "red") {
       "arrow-down"
     } else {
       "arrow-up"
@@ -218,7 +220,7 @@ server <- function(input, output) {
     }
   })
   
-  # set icon for average growth
+  # set icon for total sales
   value2_icon <- reactive({
     if(value2_color() == "red") {
       ""
