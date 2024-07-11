@@ -229,7 +229,7 @@ server <- function(input, output) {
       labs(title = "Sales by Product Category",
            x = "Sales",
            y = "Product Category",
-           fill = "Salesperson") +
+           fill = "") +
       scale_fill_manual(values = rev(custom_palette)) +
       theme_minimal() + theme(plot.background = element_rect(fill = "white", color = "white"),
                               panel.grid.major = element_blank(),
@@ -240,6 +240,7 @@ server <- function(input, output) {
                               axis.text.x = element_text(size = 14),
                               axis.text.y = element_text(size = 14)
       ) +
+      theme(legend.position = "bottom") +
       scale_x_continuous(labels = function(x) paste("$", scales::label_number_si()(x))) 
   })
   
