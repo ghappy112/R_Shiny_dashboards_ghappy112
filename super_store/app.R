@@ -1,4 +1,5 @@
 library(shinydashboard)
+library(fresh)
 library(ggplot2)
 library(scales)
 library(dplyr)
@@ -68,6 +69,14 @@ df$Year_Quarter = dates
 rm(date, dates, month, year, quarter, x)
 
 
+# custom theme
+mytheme = create_theme(
+  adminlte_color(
+    green = "#009E73"
+  )
+)
+
+
 # UI
 ui <- dashboardPage(
   dashboardHeader(title = "Superstore Analytics"),
@@ -77,6 +86,7 @@ ui <- dashboardPage(
     )
   ),
   dashboardBody(
+    use_theme(mytheme),
     tabItems(
       tabItem(tabName = "sales_dashboard",
               fluidRow(
@@ -238,7 +248,7 @@ server <- function(input, output) {
     infoBox(
       "Average Quarterly Growth",
       avg_growth,
-      icon = icon("circle-up"),
+      icon = icon("arrow-up"),
       color = "green"
     )
   })
