@@ -127,7 +127,7 @@ ui <- dashboardPage(
       menuItem("Sales Dashboard", tabName = "sales_dashboard", icon = icon("dashboard"))
     ),
     sidebarPanel(
-      style = "background-color: transparent;",  # Make the sidebar transparent
+      style = "background-color: transparent; border: 0px",  # Make the sidebar transparent
       sliderTextInput("filter0",
                       label = "Date Range Filter",
                       grid = FALSE,
@@ -138,12 +138,12 @@ ui <- dashboardPage(
       width=0
     ),
     sidebarPanel(
-      style = "background-color: transparent;",  # Make the sidebar transparent
+      style = "background-color: transparent; border: 0px",  # Make the sidebar transparent
       checkboxGroupInput("filter1",
                          "Salesperson Filter",
                          choices = sort(unique(df$Person)),
                          selected = unique(df$Person),
-                         #inline = FALSE,
+                         #inline = TRUE,
                          #width = 0,
                          #choiceNames = NULL,
                          #choiceValues = NULL
@@ -151,7 +151,7 @@ ui <- dashboardPage(
       width=0
   ),
   sidebarPanel(
-    style = "background-color: transparent;",  # Make the sidebar transparent
+    style = "background-color: transparent; border: 0px",  # Make the sidebar transparent
     checkboxGroupInput("filter2",
                        "Product Category Filter",
                        choices = sort(unique(df$Category)),
@@ -259,6 +259,8 @@ server <- function(input, output) {
   # set color for average growth
   value1_color <- reactive({
     if(avg_growth() == "") {
+      "red"
+    } else if (as.numeric(gsub("%", "", avg_growth())) <= 0) {
       "red"
     } else {
       "green"
