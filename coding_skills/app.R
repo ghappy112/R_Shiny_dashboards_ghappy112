@@ -98,9 +98,9 @@ server <- function(input, output) {
                               panel.grid.major = element_blank(),
                               panel.grid.minor = element_blank(),
                               panel.border = element_blank(),
-                              plot.title = element_text(hjust = 0.5, size = rel(1.8), face = "bold"),
-                              axis.title = element_text(size = rel(1.2), face = "bold"),
-                              axis.text = element_text(size = rel(1.2))
+                              plot.title = element_text(hjust = 0.5, size = 24, face = "bold"),
+                              axis.title = element_text(size = 16, face = "bold"),
+                              axis.text = element_text(size = 14)
       ) +
       scale_x_continuous(labels = function(x) {
         ifelse(x == 0, "Novice",
