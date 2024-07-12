@@ -1,4 +1,5 @@
 library(shinydashboard)
+library(shinyWidgets)
 library(fresh)
 library(ggplot2)
 library(scales)
@@ -66,14 +67,53 @@ df$Year_Quarter = dates
 #df
 
 # delete data that is no longer needed
-rm(date, dates, month, year, quarter, x)
+rm(date, month, year, quarter, x)
+
+# engineer list of dates for sidebar filters
+dates = sort(unique(df$Year_Quarter))
+dates = sub("(\\d{4})\\s(Q\\d)", "\\2 \\1", dates)
+
+
+# function for generating list of years and quarters given a max and min quarter and year
+get_dates_vec <- function(start_date, end_date) {
+  
+  min_date <- strsplit(start_date, " ")[[1]]
+  min_quarter = as.integer(gsub("Q", "", min_date[1]))
+  min_year = as.integer(min_date[2])
+  
+  max_date <- strsplit(end_date, " ")[[1]]
+  max_quarter = as.integer(gsub("Q", "", max_date[1]))
+  max_year = as.integer(max_date[2])
+  
+  dates_vec = c()
+  
+  for (year in seq(from=min_year, to=max_year)) {
+    
+    from = 1
+    to = 4
+    
+    if (year == min_year) {
+      from = min_quarter
+    }
+    
+    if (year == max_year) {
+      to = max_quarter
+    }
+    
+    for (quarter in seq(from=from, to=to)) {
+      dates_vec = append(dates_vec, paste(year, " ", "Q", quarter, sep=""))
+    }
+  }
+  
+  return(dates_vec)
+  
+}
 
 
 # custom theme
 mytheme = create_theme(
   adminlte_color(
     green = "#009E73",
-    #green = "#4DAF4A",
     red = "#b20019"
   )
 )
@@ -85,6 +125,17 @@ ui <- dashboardPage(
   dashboardSidebar(
     sidebarMenu(
       menuItem("Sales Dashboard", tabName = "sales_dashboard", icon = icon("dashboard"))
+    ),
+    sidebarPanel(
+      style = "background-color: transparent;",  # Make the sidebar transparent
+      sliderTextInput("filter0",
+                      label = "Date Range Filter",
+                      grid = FALSE,
+                      force_edges = TRUE,
+                      choices = dates,
+                      selected = c(dates[1], tail(dates, n=1))
+      ),
+      width=0
     ),
     sidebarPanel(
       style = "background-color: transparent;",  # Make the sidebar transparent
@@ -140,7 +191,7 @@ server <- function(input, output) {
   
   # Observe changes in user input (e.g., checkboxGroupInput)
   observe({
-    filtered_df(df[df$Person %in% input$filter1 & df$Category %in% input$filter2, ])
+    filtered_df(df[df$Person %in% input$filter1 & df$Category %in% input$filter2 & df$Year_Quarter %in% get_dates_vec(input$filter0[1], input$filter0[2]), ])
   })
   
   # Render the summary of the filtered dataframe
