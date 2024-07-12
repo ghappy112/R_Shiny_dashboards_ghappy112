@@ -127,7 +127,7 @@ ui <- dashboardPage(
       menuItem("Sales Dashboard", tabName = "sales_dashboard", icon = icon("dashboard"))
     ),
     sidebarPanel(
-      style = "background-color: transparent; border: 0px",  # Make the sidebar transparent
+      style = "background-color: transparent; border: 3px solid",  # Make the sidebar transparent
       sliderTextInput("filter0",
                       label = "Date Range Filter",
                       grid = FALSE,
@@ -138,7 +138,7 @@ ui <- dashboardPage(
       width=0
     ),
     sidebarPanel(
-      style = "background-color: transparent; border: 0px",  # Make the sidebar transparent
+      style = "background-color: transparent; border: 3px solid",  # Make the sidebar transparent
       checkboxGroupInput("filter1",
                          "Salesperson Filter",
                          choices = sort(unique(df$Person)),
@@ -151,7 +151,7 @@ ui <- dashboardPage(
       width=0
   ),
   sidebarPanel(
-    style = "background-color: transparent; border: 0px",  # Make the sidebar transparent
+    style = "background-color: transparent; border: 3px solid",  # Make the sidebar transparent
     checkboxGroupInput("filter2",
                        "Product Category Filter",
                        choices = sort(unique(df$Category)),
