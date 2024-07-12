@@ -7,8 +7,8 @@ library(tidyr)
 library(rio)
 
 
-# color palette for stacked bar chart
-custom_palette <- c("#0072B2", "#009E73", "#D55E00", "#CC79A7")
+# custom color palette
+custom_palette <- c("#0072B2", "#D55E00", "#b20019", "#009E73")
 
 # load excel file
 data <- import_list("sample_-_superstore.xls") 
@@ -73,6 +73,7 @@ rm(date, dates, month, year, quarter, x)
 mytheme = create_theme(
   adminlte_color(
     green = "#009E73",
+    #green = "#4DAF4A",
     red = "#b20019"
   )
 )
@@ -97,6 +98,19 @@ ui <- dashboardPage(
                          #choiceValues = NULL
                          ),
       width=0
+  ),
+  sidebarPanel(
+    style = "background-color: transparent;",  # Make the sidebar transparent
+    checkboxGroupInput("filter2",
+                       "Product Category Filter",
+                       choices = sort(unique(df$Category)),
+                       selected = unique(df$Category),
+                       #inline = FALSE,
+                       #width = 0,
+                       #choiceNames = NULL,
+                       #choiceValues = NULL
+    ),
+    width=0
   )
   ),
   dashboardBody(
@@ -126,7 +140,7 @@ server <- function(input, output) {
   
   # Observe changes in user input (e.g., checkboxGroupInput)
   observe({
-    filtered_df(df[df$Person %in% input$filter1, ])
+    filtered_df(df[df$Person %in% input$filter1 & df$Category %in% input$filter2, ])
   })
   
   # Render the summary of the filtered dataframe
@@ -139,24 +153,24 @@ server <- function(input, output) {
   
   # Engineer sales by salesperson
   df_grp_person <- reactive({
-    df %>%
-      filter(Person %in% input$filter1) %>%
+    filtered_df() %>%
+      #filter(Person %in% input$filter1 & df$Category %in% input$filter2) %>%
       group_by(Person) %>%
       summarise(total_sales = sum(Sales), .groups = 'drop')
   })
   
   # Engineer sales by year and quarter
   df_grp_time <- reactive({
-    df %>%
-      filter(Person %in% input$filter1) %>%
+    filtered_df() %>%
+      #filter(Person %in% input$filter1 & df$Category %in% input$filter2) %>%
       group_by(Year_Quarter) %>%
       summarise(total_sales = sum(Sales), .groups = 'drop')
   })
   
   # Engineer sales by product category and salesperson
   df_grp_cat_person <- reactive({
-    df %>%
-      filter(Person %in% input$filter1) %>%
+    filtered_df() %>%
+      #filter(Person %in% input$filter1 & df$Category %in% input$filter2) %>%
       group_by(Category, Person) %>%
       summarise(total_sales = sum(Sales), .groups = 'drop')
   })
@@ -238,11 +252,11 @@ server <- function(input, output) {
     ggplot(data = df_grp_time(), aes(x = Year_Quarter, y = total_sales, group = 1)) +
       
       # Line and point aesthetics
-      geom_line(color = custom_palette[1], size = 1.2) +
-      geom_point(color = custom_palette[1], size = 3, shape = 21, fill = "white") +
+      geom_line(color = "#0072B2", size = 1.2) +
+      geom_point(color = "#0072B2", size = 3, shape = 21, fill = "white") +
       
       # Add trend line (dashed) with the same color as the main line
-      geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = custom_palette[1], linetype = "dashed") +
+      geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "#0072B2", linetype = "dashed") +
       
       # Labels and titles
       labs(title = "Quarterly Sales",
@@ -322,7 +336,7 @@ server <- function(input, output) {
                               axis.text.y = element_text(size = 14)
       ) +
       theme(legend.position = "bottom") +
-      scale_x_continuous(labels = function(x) paste("$", scales::label_number_si()(x))) 
+      scale_x_continuous(labels = function(x) paste0("$", scales::label_number_si()(x))) 
   })
   
   # info box 1
