@@ -9,7 +9,10 @@ library(rio)
 
 
 # custom color palette
-custom_palette <- c("#0072B2", "#D55E00", "#b20019", "#009E73")
+#custom_palette <- c("#0072B2", "#D55E00", "#b20019", "#009E73")
+#custom_palette <- c("#009E73", "#0072B2", "#D55E00", "#b20019")
+#custom_palette <- c("#0072B2", "#D55E00", "#b20019", "#00AAAA")
+custom_palette <- c("#0072B2", "#D55E00", "#b20019", "#008080")
 
 # load excel file
 data <- import_list("sample_-_superstore.xls") 
@@ -40,13 +43,28 @@ people = clean_colnames(people, "People")
 
 # join dataframes
 df = merge(orders, people, by = "Region")
-#df = merge(df, returns, by = "Order.ID")
+df = merge(x = df, y = returns, by = "Order.ID", all.x = TRUE)
 #df
 
 # delete data that is no longer needed
 rm(data, orders, returns, people)
 
-# engineer Quarter Data
+# engineer returns feature
+returns = c()
+returns_cat = c()
+for (x in df$Returned) {
+  if (is.na(x)) {
+    returns = append(returns, 0)
+    returns_cat = append(returns_cat, "Kept")
+  } else {
+    returns = append(returns, 1)
+    returns_cat = append(returns_cat, "Returned")
+  }
+}
+df$Returned <- returns
+df$Returned_Label <- returns_cat
+
+# engineer quarter feature
 dates = c()
 for (x in as.character(df$Order.Date)) {
   month = as.numeric(substr(x, 6, 7))
@@ -113,7 +131,10 @@ get_dates_vec <- function(start_date, end_date) {
 # custom theme
 mytheme = create_theme(
   adminlte_color(
-    green = "#009E73",
+    #green = "#009E73",
+    green = "#228B22", # forest green
+    #green = "#2E8B57", # sea green
+    #green = "#3CB371", # medium sea green
     red = "#b20019"
   )
 )
@@ -124,7 +145,8 @@ ui <- dashboardPage(
   dashboardHeader(title = "Superstore Analytics"),
   dashboardSidebar(
     sidebarMenu(
-      menuItem("Sales Dashboard", tabName = "sales_dashboard", icon = icon("dashboard"))
+      menuItem("Sales Dashboard", tabName = "sales_dashboard", icon = icon("dashboard")),
+      menuItem("Returns Dashboard", tabName = "returns_dashboard", icon = icon("dashboard"))
     ),
     sidebarPanel(
       style = "background-color: transparent; border: 3px solid",  # Make the sidebar transparent
@@ -177,6 +199,21 @@ ui <- dashboardPage(
                 box(infoBoxOutput("value2", width = NULL), width = 4),
                 box(infoBoxOutput("value1", width = NULL), width = 4),
               )
+      ),
+      tabItem(tabName = "returns_dashboard",
+              fluidRow(
+                box(infoBoxOutput("value3", width = NULL), width = 4),
+                box(infoBoxOutput("value4", width = NULL), width = 4),
+                box(infoBoxOutput("value5", width = NULL), width = 4)
+              ),
+              fluidRow(
+                box(plotOutput("returns_bar_plot", width = "100%", height = 400)),
+                box(plotOutput("returns_rate_bar_plot", width = "100%", height = 400))
+              ),
+              fluidRow(
+                box(plotOutput("returns_ts", width = "100%", height = 400)),
+                box(plotOutput("returns_donut", width = "100%", height = 400))
+              )
       )
     )
   )
@@ -185,6 +222,7 @@ ui <- dashboardPage(
 # Server
 server <- function(input, output) {
   
+  # build reactive functionality
   
   # Create a reactive value to store the filtered dataframe
   filtered_df <- reactiveVal(df)
@@ -292,12 +330,146 @@ server <- function(input, output) {
     if(value2_color() == "red") {
       ""
     } else {
-      "check"
+      "plus"
+    }
+  })
+  
+  # engineer total returns ($) and return rate (%) by category
+  return_df <- reactive({
+    return_df_grp_cat = filtered_df() %>% group_by(Category)  %>%
+      summarise(total_returns = sum(Returned * Quantity), total_returns_dollars = sum(Sales * Returned),
+                .groups = 'drop')
+    return_df_grp_cat = data.frame(return_df_grp_cat)
+    return_df_grp_cat = merge(return_df_grp_cat, data.frame(filtered_df() %>% group_by(Category) %>% summarise(n = sum(Quantity), .groups = 'drop')), by = "Category")
+    return_df_grp_cat$return_rate = (return_df_grp_cat$total_returns / return_df_grp_cat$n) * 100
+    return_df_grp_cat
+  })
+  
+  # engineer return rate by quarter
+  return_ts_df <- reactive({return_q = filtered_df() %>% group_by(Year_Quarter)  %>%
+    summarise(total_returns = sum(Returned * Quantity), n = sum(Quantity),
+                .groups = 'drop')
+    return_q = data.frame(return_q)
+    return_q$return_rate = (return_q$total_returns / return_q$n) * 100
+    return_q
+  })
+  
+  # engineer number of items by returned or not
+  return_df2 <- reactive({
+    # aggregations
+    return_label_df <- filtered_df() %>% group_by(Returned_Label)  %>%
+      summarise(n = sum(Quantity),
+                .groups = 'drop')
+    return_label_df = data.frame(return_label_df)
+    return_label_df$n = return_label_df$n / sum(return_label_df$n)
+    
+    # Compute the cumulative percentages (top of each rectangle)
+    return_label_df$ymax <- cumsum(return_label_df$n)
+    
+    # Compute the bottom of each rectangle
+    return_label_df$ymin <- c(0, head(return_label_df$ymax, n=-1))
+    
+    # Compute label position
+    return_label_df$labelPosition <- (return_label_df$ymax + return_label_df$ymin) / 2
+    
+    # Compute a good label
+    return_label_df$label <- paste0(return_label_df$Returned_Label, "\n", round(return_label_df$n * 100, 2), "%")
+    
+    return_label_df
+  })
+  
+  # calculate total returns
+  total_returns <- reactive({
+    x = round(sum((filtered_df() %>% filter(Returned == 1))$Sales), 0)
+    if (x >= 1000) {
+      x = round(x / 1000, 1)
+      x = paste0(x, "K")
+    }
+    x = paste0("$", x)
+    x
+  })
+  
+  # calculate average return rate
+  return_rate <- reactive({
+    x = paste0(round((sum(filtered_df()$Returned * filtered_df()$Quantity) / sum(filtered_df()$Quantity)) * 100, 2), "%")
+    if (x == "NaN%") {
+      x = ""
+    }
+    x
+  })
+  
+  # calculate average change in return rate
+  return_rate_delta <- reactive({
+    return_q = return_ts_df() %>% mutate(return_rate_lag = lag(return_rate))
+    return_q$return_rate_change = return_q$return_rate - return_q$return_rate_lag
+    return_q = return_q %>% drop_na()
+    return_q = paste0(round(mean(return_q$return_rate_change), 2), "%")
+    if (return_q == "NaN%") {
+      return_q = ""
+    }
+    return_q
+  })
+  
+  # set icon for total returns
+  value3_icon <- reactive({
+    if (total_returns() == "$0"){
+      ""
+    } else {
+      "minus"
+    }
+  })
+  
+  # set color for total returns
+  value3_color <- reactive({
+    if(value3_icon() == "minus") {
+      "red"
+    } else {
+      "green"
+    }
+  })
+  
+  # set icon for return rate
+  value4_icon <- reactive({
+    if (return_rate() == ""){
+      ""
+    } else {
+      "bug"
+    }
+  })
+  
+  # set color for return rate
+  value4_color <- reactive({
+    if(value4_icon() == "bug") {
+      "red"
+    } else {
+      "green"
+    }
+  })
+  
+  # set icon for return rate change
+  value5_icon <- reactive({
+    if (return_rate_delta() == ""){
+      ""
+    } else if(as.numeric(gsub("%", "", return_rate_delta())) >= 0) {
+      "arrow-up"
+    } else {
+      "arrow-down"
+    }
+  })
+  
+  # set color for return rate change
+  value5_color <- reactive({
+    if(value5_icon() == "arrow-up") {
+      "red"
+    } else {
+      "green"
     }
   })
   
   
   # render plots
+  
+  # sales dashboard plots
   
   # render time series chart
   output$time_series_plot <- renderPlot({
@@ -374,7 +546,7 @@ server <- function(input, output) {
     # sales by product category and salesperson bar chart
     ggplot(df_grp_cat_person(), aes(fill = reorder(Person, total_sales), y = reorder(Category, total_sales), x=total_sales)) + 
       geom_bar(position="stack", stat="identity", color = NA) +
-      labs(title = "Sales by Product Category",
+      labs(title = "Sales by Products",
            x = "Sales",
            y = "Product Category",
            fill = "") +
@@ -409,6 +581,146 @@ server <- function(input, output) {
       total_sales(),
       icon = icon(value2_icon()),
       color = value2_color()
+    )
+  })
+  
+  
+  # returns dashboard plots
+  
+  # render returned rate by category bar chart
+  output$returns_rate_bar_plot <- renderPlot({
+    
+    ggplot(return_df(), aes(x = return_rate, y = reorder(Category, return_rate))) +
+    geom_bar(stat = "identity", fill = "#b20019", color = "white") +
+    labs(title = "Return Rate by Products",
+         x = "Return Rate",
+         y = "Product Category") +
+    theme_minimal() + theme(plot.background = element_rect(fill = "white", color = "white"),  # Dark grey background box,#f0f0f0
+                            panel.grid.major = element_blank(),
+                            panel.grid.minor = element_blank(),
+                            panel.border = element_blank(),
+                            plot.title = element_text(hjust = 0.5, size = 24, face = "bold"),
+                            axis.title = element_text(size = 16, face = "bold"),
+                            axis.text.x = element_text(size = 14),
+                            axis.text.y = element_text(size = 14),
+                            legend.position = "none"
+    ) +
+    scale_x_continuous(labels = function(x) paste0("%", scales::label_number_si()(x)))
+  })
+  
+  # render returned dollars by category bar chart
+  output$returns_bar_plot <- renderPlot({
+    ggplot(return_df(), aes(x = total_returns_dollars, y = reorder(Category, total_returns_dollars))) +
+      geom_bar(stat = "identity", fill = "#b20019", color = "white") +
+      labs(title = "Total Returns by Products",
+           x = "Returns",
+           y = "Product Category") +
+      theme_minimal() + theme(plot.background = element_rect(fill = "white", color = "white"),  # Dark grey background box,#f0f0f0
+                              panel.grid.major = element_blank(),
+                              panel.grid.minor = element_blank(),
+                              panel.border = element_blank(),
+                              plot.title = element_text(hjust = 0.5, size = 24, face = "bold"),
+                              axis.title = element_text(size = 16, face = "bold"),
+                              axis.text.x = element_text(size = 14),
+                              axis.text.y = element_text(size = 14),
+                              legend.position = "none"
+      ) +
+      scale_x_continuous(labels = function(x) paste0("$", scales::label_number_si()(x))) 
+  })
+  
+  # render return rate time series chat
+  
+  output$returns_ts <- renderPlot({
+    
+    ggplot(data = return_ts_df(), aes(x = Year_Quarter, y = return_rate, group = 1)) +
+      
+      # Line and point aesthetics
+      geom_line(color = "#b20019", size = 1.2) +
+      geom_point(color = "#b20019", size = 3, shape = 21, fill = "white") +
+      
+      # Add trend line (dashed) with the same color as the main line
+      geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "#b20019", linetype = "dashed") +
+      
+      # Labels and titles
+      labs(title = "Quarterly Return Rate",
+           x = "Quarter",
+           y = "Return Rate") +
+      
+      # Theme adjustments for a clean look
+      theme_minimal() +
+      theme(
+        plot.title = element_text(hjust = 0.5, size = 24, face = "bold"),
+        axis.title = element_text(size = 16, face = "bold"),
+        axis.text.x = element_text(size = 14, angle = 90, vjust = 0.5, hjust = 1),  # Rotate x-axis labels vertically
+        axis.text.y = element_text(size = 14),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        legend.position = "none"
+      ) +
+      
+      # Apply a subtle gray background to the plot area
+      theme(plot.background = element_rect(fill = "white", color = NA)) +
+      
+      # Customizing the plot grid lines
+      theme(panel.grid.major = element_line(color = "#d9d9d9"),##d9d9d9
+            panel.grid.minor = element_line(color = "#f5f5f5", linetype = "dashed")) +
+      
+      # Adding a gradient shadow effect to the plot area
+      theme(plot.margin = margin(10, 10, 30, 10, "pt")) +
+      
+      # Modifying the color of the facets
+      theme(panel.background = element_rect(fill = "#d9d9d9", color = NA)) +
+      
+      # Format y-axis labels with $ sign and K/M suffix
+      scale_y_continuous(labels = function(x) paste0("%", label_number_si()(x)))
+  })
+  
+  # render donut chart
+  output$returns_donut <- renderPlot({
+  
+    ggplot(return_df2(), aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Returned_Label)) +
+      geom_rect() +
+      labs(title = "Return Rate") +
+      geom_text( x=2, aes(y=labelPosition, label=label, color=Returned_Label), size=6) + # x here controls label position (inner / outer)
+      scale_fill_manual(values = c("#008080", "#B20019")) +
+      #scale_fill_brewer(palette=3) +
+      scale_color_manual(values = c("black", "black")) +
+      #scale_color_brewer(palette=3) +
+      coord_polar(theta="y") +
+      xlim(c(-1, 4)) +
+      theme_void() +
+      theme(legend.position = "none",
+            plot.title = element_text(hjust = 0.5, size = 24, face = "bold"))
+  })
+  
+  # info box 3
+  output$value3 <- renderInfoBox({
+    infoBox(
+      "Total Returns",
+      total_returns(),
+      icon = icon(value3_icon()),
+      color = value3_color()
+    )
+  })
+  
+  # info box 4
+  output$value4 <- renderInfoBox({
+    infoBox(
+      "Return Rate",
+      return_rate(),
+      icon = icon(value4_icon()),
+      color = value4_color()
+    )
+  })
+  
+  # info box 5
+  output$value5 <- renderInfoBox({
+    infoBox(
+      "Return Rate Quarterly Change (Avg.)",
+      return_rate_delta(),
+      icon = icon(value5_icon()),
+      color = value5_color()
     )
   })
 }
