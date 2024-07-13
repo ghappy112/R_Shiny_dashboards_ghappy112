@@ -135,7 +135,8 @@ mytheme = create_theme(
     green = "#228B22", # forest green
     #green = "#2E8B57", # sea green
     #green = "#3CB371", # medium sea green
-    red = "#b20019"
+    red = "#b20019",
+    blue = "#0072B2"
   )
 )
 
@@ -191,13 +192,17 @@ ui <- dashboardPage(
     tabItems(
       tabItem(tabName = "sales_dashboard",
               fluidRow(
+                box(infoBoxOutput("value2", width = NULL), width = 4),
+                box(infoBoxOutput("value1", width = NULL), width = 4),
+                box(infoBoxOutput("value0", width = NULL), width = 4)
+              ),
+              fluidRow(
                 box(plotOutput("time_series_plot", width = "100%", height = 400)),
                 box(plotOutput("bar_plot", width = "100%", height = 400))
               ),
               fluidRow(
                 box(plotOutput("stacked_bar_plot", width = "100%", height = 400)),
-                box(infoBoxOutput("value2", width = NULL), width = 4),
-                box(infoBoxOutput("value1", width = NULL), width = 4),
+                box(plotOutput("discount_rate_plot", width = "100%", height = 400))
               )
       ),
       tabItem(tabName = "returns_dashboard",
@@ -292,6 +297,24 @@ server <- function(input, output) {
     } else {
       paste("$", round(total, 1), sep = "")
     }
+  })
+  
+  # calculate average discount rate
+  discount_rate <- reactive({
+    dr = paste0(round((sum(filtered_df()$Discount * filtered_df()$Sales) / sum(filtered_df()$Sales)) * 100, 2), "%")
+    if (dr == "NaN%") {
+      dr = ""
+    }
+    dr
+  })
+  
+  # average discount rate by category
+  dr_df <- reactive({
+    discount_rate_df = filtered_df() %>% group_by(Category)  %>%
+      summarise(discount_rate = (sum(Discount * Sales) / sum(Sales)) * 100,
+                .groups = 'drop')
+    discount_rate_df = data.frame(discount_rate_df)
+    discount_rate_df
   })
   
   # set color for average growth
@@ -564,6 +587,27 @@ server <- function(input, output) {
       scale_x_continuous(labels = function(x) paste0("$", scales::label_number_si()(x))) 
   })
   
+  # render discount rate bar chart
+  output$discount_rate_plot <- renderPlot({
+  
+    ggplot(dr_df(), aes(x = discount_rate, y = reorder(Category, discount_rate))) +
+      geom_bar(stat = "identity", fill = "#0072B2", color = "white") +
+      labs(title = "Discount Rate by Products",
+           x = "Avg. Discount Rate",
+           y = "Product Category") +
+      theme_minimal() + theme(plot.background = element_rect(fill = "white", color = "white"),  # Dark grey background box,#f0f0f0
+                              panel.grid.major = element_blank(),
+                              panel.grid.minor = element_blank(),
+                              panel.border = element_blank(),
+                              plot.title = element_text(hjust = 0.5, size = 24, face = "bold"),
+                              axis.title = element_text(size = 16, face = "bold"),
+                              axis.text.x = element_text(size = 14),
+                              axis.text.y = element_text(size = 14),
+                              legend.position = "none"
+      ) +
+      scale_x_continuous(labels = function(x) paste0("%", scales::label_number_si()(x))) 
+  })
+  
   # info box 1
   output$value1 <- renderInfoBox({
     infoBox(
@@ -584,6 +628,15 @@ server <- function(input, output) {
     )
   })
   
+  # info box 0
+  output$value0 <- renderInfoBox({
+    infoBox(
+      "Discount Rate (Avg.)",
+      discount_rate(),
+      icon = icon("tags"),
+      color = "blue"
+    )
+  })
   
   # returns dashboard plots
   
