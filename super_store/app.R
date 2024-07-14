@@ -147,7 +147,8 @@ ui <- dashboardPage(
   dashboardSidebar(
     sidebarMenu(
       menuItem("Sales Dashboard", tabName = "sales_dashboard", icon = icon("dashboard")),
-      menuItem("Returns Dashboard", tabName = "returns_dashboard", icon = icon("dashboard"))
+      menuItem("Returns Dashboard", tabName = "returns_dashboard", icon = icon("dashboard")),
+      menuItem("Profitability Dashboard", tabName = "profit_dashboard", icon = icon("dashboard"))
     ),
     sidebarPanel(
       style = "background-color: transparent; border: 3px solid",  # Make the sidebar transparent
@@ -218,6 +219,16 @@ ui <- dashboardPage(
               fluidRow(
                 box(plotOutput("returns_ts", width = "100%", height = 400)),
                 box(plotOutput("returns_donut", width = "100%", height = 400))
+              )
+      ),
+      tabItem(tabName = "profit_dashboard",
+              fluidRow(
+                box(infoBoxOutput("value6", width = NULL), width = 4),
+                box(infoBoxOutput("value7", width = NULL), width = 4)
+              ),
+              fluidRow(
+                box(plotOutput("pm_plot", width = "100%", height = 400)),
+                box(plotOutput("pm_ts_plot", width = "100%", height = 400))
               )
       )
     )
@@ -489,6 +500,58 @@ server <- function(input, output) {
     }
   })
   
+  # profit margin
+  profit_margin <- reactive({
+    pm = paste0(round((sum(filtered_df()$Profit) / sum(filtered_df()$Sales)) * 100, 2), "%")
+    if (pm == "NaN%") {
+      pm = ""
+    }
+    pm
+  })
+  
+  # profit margin quarterly change
+  profit_margin_change <- reactive({
+    pm_chg <- pm_ts_df() %>% mutate(profit_margin_lag = lag(profit_margin))
+    pm_chg <- pm_chg %>% drop_na()
+    pm_chg$profit_margin_change <- pm_chg$profit_margin - pm_chg$profit_margin_lag
+    pm_chg <- paste0(round(mean(pm_chg$profit_margin_change), 2), "%")
+    if (pm_chg == "NaN%") {
+      pm_chg <- ""
+    }
+    pm_chg
+  })
+  
+  # set profit margin quarterly change icon
+  profit_margin_change_icon <- reactive({
+    if (profit_margin_change() == "") {
+      profit_margin_icon <- ""
+    } else if (as.numeric(gsub("%", "", profit_margin_change())) < 0) {
+      profit_margin_icon <- "arrow-down"
+    } else if (as.numeric(gsub("%", "", profit_margin_change())) == 0) {
+      profit_margin_icon <- ""
+    } else {
+      profit_margin_icon <- "arrow-up"
+    }
+  })
+  
+  # set profit margin quarterly change color
+  profit_margin_change_color <- reactive({
+    if (profit_margin_change_icon() == "arrow-up") {
+      profit_margin_change_color <- "green"
+    } else if (profit_margin_change_icon() == "arrow-down" | profit_margin_change_icon() == "") {
+      profit_margin_change_color <- "red"
+    }
+  })
+  
+  # profit margin by category
+  pm_df <- reactive({
+    data.frame(filtered_df() %>% group_by(Category)  %>% summarise(profit_margin = (sum(Profit) / sum(Sales)) * 100,.groups = 'drop'))
+  })
+  
+  # profit margin time series df
+  pm_ts_df <- reactive({
+    data.frame(filtered_df() %>% group_by(Year_Quarter)  %>% summarise(profit_margin = (sum(Profit) / sum(Sales)) * 100,.groups = 'drop'))
+  })
   
   # render plots
   
@@ -770,10 +833,100 @@ server <- function(input, output) {
   # info box 5
   output$value5 <- renderInfoBox({
     infoBox(
-      "Return Rate Quarterly Change (Avg.)",
+      "Return Rate Change (Avg.)",
       return_rate_delta(),
       icon = icon(value5_icon()),
       color = value5_color()
+    )
+  })
+  
+  # profit dashboard plots
+  
+  # render profit_margin by category bar chart
+  output$pm_plot <- renderPlot({
+    
+    ggplot(pm_df(), aes(x = profit_margin, y = reorder(Category, profit_margin))) +
+      geom_bar(stat = "identity", fill = "#228B22", color = "white") +
+      labs(title = "Profit Margin by Products",
+           x = "Profit Margin",
+           y = "Product Category") +
+      theme_minimal() + theme(plot.background = element_rect(fill = "white", color = "white"),  # Dark grey background box,#f0f0f0
+                              panel.grid.major = element_blank(),
+                              panel.grid.minor = element_blank(),
+                              panel.border = element_blank(),
+                              plot.title = element_text(hjust = 0.5, size = 24, face = "bold"),
+                              axis.title = element_text(size = 16, face = "bold"),
+                              axis.text.x = element_text(size = 14),
+                              axis.text.y = element_text(size = 14),
+                              legend.position = "none"
+      ) +
+      scale_x_continuous(labels = function(x) paste0("%", scales::label_number_si()(x)))
+  })
+  
+  # render profit margin time series
+  output$pm_ts_plot <- renderPlot({
+    
+    ggplot(data = pm_ts_df(), aes(x = Year_Quarter, y = profit_margin, group = 1)) +
+      
+      # Line and point aesthetics
+      geom_line(color = "#228B22", size = 1.2) +
+      geom_point(color = "#228B22", size = 3, shape = 21, fill = "white") +
+      
+      # Add trend line (dashed) with the same color as the main line
+      geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "#228B22", linetype = "dashed") +
+      
+      # Labels and titles
+      labs(title = "Quarterly Profit Margin",
+           x = "Quarter",
+           y = "Profit Margin") +
+      
+      # Theme adjustments for a clean look
+      theme_minimal() +
+      theme(
+        plot.title = element_text(hjust = 0.5, size = 24, face = "bold"),
+        axis.title = element_text(size = 16, face = "bold"),
+        axis.text.x = element_text(size = 14, angle = 90, vjust = 0.5, hjust = 1),  # Rotate x-axis labels vertically
+        axis.text.y = element_text(size = 14),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        legend.position = "none"
+      ) +
+      
+      # Apply a subtle gray background to the plot area
+      theme(plot.background = element_rect(fill = "white", color = NA)) +
+      
+      # Customizing the plot grid lines
+      theme(panel.grid.major = element_line(color = "#d9d9d9"),##d9d9d9
+            panel.grid.minor = element_line(color = "#f5f5f5", linetype = "dashed")) +
+      
+      # Adding a gradient shadow effect to the plot area
+      theme(plot.margin = margin(10, 10, 30, 10, "pt")) +
+      
+      # Modifying the color of the facets
+      theme(panel.background = element_rect(fill = "#d9d9d9", color = NA)) +
+      
+      # Format y-axis labels with $ sign and K/M suffix
+      scale_y_continuous(labels = function(x) paste0("%", label_number_si()(x)))
+  })
+  
+  # info box 6
+  output$value6 <- renderInfoBox({
+    infoBox(
+      "Profit Margin",
+      profit_margin(),
+      icon = icon("chart-line"),
+      color = "green"
+    )
+  })
+  
+  # info box 7
+  output$value7 <- renderInfoBox({
+    infoBox(
+      "Profit Margin Change",
+      profit_margin_change(),
+      icon = icon(profit_margin_change_icon()),
+      color = profit_margin_change_color()
     )
   })
 }
