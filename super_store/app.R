@@ -223,8 +223,8 @@ ui <- dashboardPage(
       ),
       tabItem(tabName = "profit_dashboard",
               fluidRow(
-                box(infoBoxOutput("value6", width = NULL), width = 4),
-                box(infoBoxOutput("value7", width = NULL), width = 4)
+                box(infoBoxOutput("value6", width = NULL)),
+                box(infoBoxOutput("value7", width = NULL))
               ),
               fluidRow(
                 box(plotOutput("pm_plot", width = "100%", height = 400)),
