@@ -833,7 +833,7 @@ server <- function(input, output) {
   # info box 5
   output$value5 <- renderInfoBox({
     infoBox(
-      "Return Rate Change (Avg.)",
+      "Quarterly Change (Avg.)",
       return_rate_delta(),
       icon = icon(value5_icon()),
       color = value5_color()
