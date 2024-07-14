@@ -923,7 +923,7 @@ server <- function(input, output) {
   # info box 7
   output$value7 <- renderInfoBox({
     infoBox(
-      "Profit Margin Change (Avg.)",
+      "Quarterly Change (Avg.)",
       profit_margin_change(),
       icon = icon(profit_margin_change_icon()),
       color = profit_margin_change_color()
