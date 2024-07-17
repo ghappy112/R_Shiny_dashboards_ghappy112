@@ -1,27 +1,15 @@
 library(shiny)
+library(shinyWidgets)
 library(bslib)
 library(igraph)
 
 # Create the graph
 main_graph <- make_graph(~ "Greg"--"From", "From"--"Born in", "From"--"Raised in", "Raised in"--"Lake Geneva, WI", "Born in"--"Chicago, IL", "Greg"--"Hobbies", "Hobbies"--"Outdoors", "Hobbies"--"Guitar", "Outdoors"--"Hiking", "Outdoors"--"Swimming", "Outdoors"--"Kayaking", "Lake Geneva, WI"--"Swimming", "Lake Geneva, WI"--"Kayaking", "Hobbies"--"Interests", "Interests"--"Econ", "Interests"--"AI", "Interests"--"ML", "Interests"--"Data Viz.", "AI"--"ML", "Greg"--"Education", "Education"--"College", "College"--"UWW", "UWW"--"Econ", "UWW"--"Math", "Econ"--"Math", "Math"--"ML", "UWW"--"Clubs", "Clubs"--"Econ Society", "Clubs"--"Women in Econ", "Clubs"--"Fin. Mgmt.", "Clubs"--"Investment Group", "Econ"--"Econ Society", "Econ"--"Women in Econ", "Education"--"Bootcamps", "Bootcamps"--"The Data Incubator", "Bootcamps"--"Revature", "The Data Incubator"--"ML", "The Data Incubator"--"Data Viz.", "Greg"--"Career", "Career"--"FERC", "Career"--"CareFree Enzymes", "Career"--"FIS", "FERC"--"Econ", "FERC"--"Econometrics", "FERC"--"Data Viz.", "Econ"--"Econometrics", "Math"--"Econometrics", "CareFree Enzymes"--"SEO", "FIS"--"ML", "FIS"--"Data Viz.", "FIS"--"Cloud", "Kayaking"--"Swimming") %>% set_vertex_attr("class", value = c("Greg", "Location", "Location", "Location", "Location", "Location", "Hobbies" ,"Hobbies", "Hobbies", "Hobbies", "Hobbies", "Hobbies", "Hobbies", "Skills", "Skills", "Skills", "Skills", "Education", "Education", "Education", "Skills", "Education", "Education", "Education", "Education", "Education", "Education", "Education", "Education", "Career", "Career", "Career", "Career", "Skills", "Skills", "Skills"))
-#g
-#summary(g)
-#as_adjacency_matrix(g)
-
 
 # create dataframe of classes
 df <- data.frame(
   class = c("Greg", "Career", "Education", "Hobbies", "Location", "Skills")
 )
-
-
-# plotting
-
-# layouts
-#layout <- layout_nicely(g)
-#layout <- layout_as_tree(g)
-#layout <- layout_with_fr(g)
-#layout <- layout_with_kk(g)
 
 # custom color palette
 custom_palette <- c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#FF69B4")
@@ -30,12 +18,23 @@ custom_palette <- c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#FF6
 # UI
 ui <- page_sidebar(
     sidebar = sidebar(
+      dropdown(
+        pickerInput(inputId = 'algo_filter',
+                    label = 'Select Layout Algorithm',
+                    choices = c("Nicely", "Fruchterman-Reingold", "Kamada-Kawai", "Reingold-Tilford"),
+                    selected = "Kamada-Kawai",
+                    options = list(`style` = "btn-info")),
+        
+        style = "unite", icon = icon("gear"),
+        status = "danger", width = "100"
+      ),
       sidebarPanel(
         checkboxGroupInput("filter", "Filter",
                            choices = c("Greg", "Career", "Education", "Hobbies", "Location", "Skills"),
                            selected = c("Greg", "Hobbies", "Location", "Skills")),
         width = 100
-      )),
+      )
+  ),
   title = "About Me Network Graph",
   plotOutput(outputId = "graph_plot")
 )
@@ -82,8 +81,19 @@ server <- function(input, output) {
   
   output$graph_plot <- renderPlot({
     
+    # get layout algo choice
+    algo <- input$algo_filter
+    
     # set layout
-    layout <- layout_with_kk(filtered_graph())
+    if (algo == "Nicely") {
+      layout <- layout_nicely(filtered_graph())
+    } else if (algo == "Fruchterman-Reingold") {
+      layout <- layout_with_fr(filtered_graph())
+    } else if (algo == "Kamada-Kawai") {
+      layout <- layout_with_kk(filtered_graph())
+    } else {
+      layout <- layout_as_tree(filtered_graph())
+    }
     
     # set background color to black
     par(bg="black")
@@ -92,7 +102,6 @@ server <- function(input, output) {
     plot(
       filtered_graph(),
       layout=layout,
-      #vertex.color = as.factor(V(g)$class),
       vertex.color = custom_palette[as.numeric(factor(V(filtered_graph())$class))],
       vertex.label.color = "white",
       vertex.label.dist = 0,
