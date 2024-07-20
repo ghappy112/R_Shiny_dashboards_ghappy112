@@ -53,7 +53,8 @@ server <- function(input, output) {
       ggtitle("K-means Clustering of Iris Dataset") +
       theme(plot.title = element_text(hjust = 0.5, size = 24, face = "bold"),
             axis.title = element_text(size = 16, face = "bold"),
-            legend.title = element_text(size = 16, face = "bold"))
+            legend.title = element_text(size = 16, face = "bold"),
+            axis.text = element_text(size = 14))
   })
 }
 
