@@ -14,9 +14,6 @@ df <- fread(
 # filter out current loans
 df <- df[df$loan_status != "Current"]
 
-#head(df, 10)
-#nrow(df)
-
 # engineer fico score feature
 df$fico <- (df$last_fico_range_low + df$last_fico_range_high) / 2
 
@@ -33,20 +30,12 @@ get_dti <- function(dti, dti_joint) {
 df$debt_to_income <- Map(get_dti, df$dti, df$dti_joint)
 
 # fn for engineering date feature
-#months = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct", "Nov", "Dec")
 get_date <- function(date) {
-  #month = substr(date, 1, 3)
-  #month = match(month, months)
-  #year = substr(date, 5, 8)
-  #return(paste(year, month, sep=" "))
-  #return(year)
   return(substr(date, 5, 8))
 }
 
 # engineer date feature
 df$date <- Map(get_date, df$issue_d)
-
-#unique(df$loan_status)
 
 # fn for engineering default feature
 get_default <- function(loan_status) {
