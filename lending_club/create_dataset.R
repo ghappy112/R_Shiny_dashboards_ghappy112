@@ -17,6 +17,9 @@ df <- df[df$loan_status != "Current"]
 # engineer fico score feature
 df$fico <- (df$last_fico_range_low + df$last_fico_range_high) / 2
 
+# filter out fico low ranges of 0
+df <- df[df$last_fico_range_low != 0]
+
 # fn for engineering dti feature
 get_dti <- function(dti, dti_joint) {
   if (is.null(dti_joint) || is.na(dti_joint)){
